@@ -35,6 +35,7 @@ if __name__ == '__main__':
     request1 = '{"sendType":"registerChannel","iotUserId":"8168759234751299584","machineCode":"cda85993"}'
     request2 = '{"sendType":"deviceSubscription","iotUserId":"8121606254596784128","machineCode":"cda8599332","productKey":"a166RICfGAA","deviceName":"KYXB-0102202211180002"}'
 
-    wst = WebSocket(url, request2)
+    wst = WebSocket(url, request1)
     wst.webSocketConnect()
+    print(wst.ws.send(request2))
     # ws
