@@ -1,18 +1,41 @@
+import json
 import sys
 import time
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5 import uic
+from PyQt5.Qt import QThread
 from websocket import create_connection
 import websocket
 from webSocket_function import *
 
 
+class SendMeassageThread(QThread):
+    startSendMessageSignal = pyqtSignal(str)
+
+    def __init__(self,ws,message,signal):
+        super().__init__()
+        self.ws =ws
+        self.message = message
+        self.sendMessageSignal = signal
+        self.ws.send(message)
+        print(self.ws)
+        print(self.ws.recv())
+
+    def sendMessage(self):
+        print("xiancchneg")
+        self.ws.send(self.message)
+        # while True:
+        res = self.ws.recv()
+        self.sendMessageSignal.emit(str(res))
+
+
+    def run(self):
+        while True:
+            time.sleep(1)
+
 class MyWindow(QWidget):
-    connectButtonSignal = pyqtSignal(str)
     sendMessageButtonSignal = pyqtSignal(str)
-    # clearSendButtonSignal = pyqtSignal(str)
-    # clearMessageButtonSignal = pyqtSignal(str)
     def __init__(self):
         super().__init__()
         self.int_ui()
@@ -29,7 +52,6 @@ class MyWindow(QWidget):
         self.address.setText("ws://test.iot.bsphpro.com/aihm/ws/nettyPush")
         self.sendMessage = self.ui.plainTextEdit  # 发送内容输入框
         self.sendMessage.setPlainText('{"sendType":"registerChannel","iotUserId":"8121606254596784128","machineCode":"cda85993111"}')
-        self.connectButton = self.ui.pushButton  # 连接按钮
         self.sendMessageButton = self.ui.pushButton_3  # 发送信息按钮
         self.receiveContent = self.ui.textEdit  # 接收内容显示区域
         self.clearSendButton = self.ui.pushButton_2  # 清空发送内容按钮
@@ -38,8 +60,8 @@ class MyWindow(QWidget):
 
         # 绑定信号与槽函数
 
-        self.connectButton.clicked.connect(self.connectServer)  # 连接服务器
-        self.connectButtonSignal.connect(self.showReceiveContent)  # 接收内容显示
+        # self.connectButton.clicked.connect(self.connectServer)  # 连接服务器
+        # self.connectButtonSignal.connect(self.showReceiveContent)  # 接收内容显示
 
         self.sendMessageButton.clicked.connect(self.sendMessageToServer)  # 发送内容到服务器
         self.sendMessageButtonSignal.connect(self.showReceiveContent)  # 接收内容显示
@@ -62,15 +84,24 @@ class MyWindow(QWidget):
 
     def sendMessageToServer(self):
         """发送信息"""
+        address = self.address.text()
         sendMessage = self.sendMessage.toPlainText()
-        self.ws.send(sendMessage)
+        self.ws = create_connection(address)
+        # self.ws.send(sendMessage)
+        print(sendMessage)
 
-        res = self.ws.recv()
-        self.messageHistory.append(res)
-        self.sendMessageButtonSignal.emit(str(self.messageHistory))  # 发送信号到内容显示框
+        self.sendMessageButtonSignal.connect(self.showReceiveContent)
+        print("fffs")
+        self.sendMessageThread = SendMeassageThread(self.ws,sendMessage,self.sendMessageButtonSignal) # 创建线程
+        print("fdsf11")
+        self.sendMessageThread.startSendMessageSignal.connect(self.sendMessageThread.sendMessage)
+        print("f2222222")
+        self.sendMessageThread.start() # 开始线程
+        print("3333")
 
-    def showReceiveContent(self, messageHistory):
+    def showReceiveContent(self, message):
         """显示接收内容"""
+        self.messageHistory.append(message)
         self.receiveContent.setText("<br>".join(self.messageHistory))
         self.receiveContent.repaint()
 
